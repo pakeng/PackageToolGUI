@@ -21,7 +21,7 @@
  
  ##  extras
  1.使用了enum  在Python 2.7上要使用enum34，并且使用上目前发现
- ```
+```
     states = Enum('states', ('none', 'decompile', 'compile', 'waite))
 ```
 不好用。所以使用的是现在的方法。
