@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import os
+import threading
 from Tkinter import *
 import tkFileDialog as ChooseFileDialog
 import tkMessageBox
@@ -9,6 +10,7 @@ import tkMessageBox
 #  定义Application类
 from beans.ConfigBean import Configuration
 from engine.engine import PackageTool
+from engine.state_machine import StateMachine, MachineState
 
 
 class Application(Frame):
@@ -107,7 +109,10 @@ class Application(Frame):
         print "start repack"
         if self._check_configuration():
             tool = PackageTool(self.configuration)
-            tool.test()
+            if StateMachine().get_state() == MachineState.WAITE:
+                tool.start()
+            else:
+                tool.test()
         else:
             pass
 
@@ -138,7 +143,31 @@ class Application(Frame):
 
     @staticmethod
     def show_err_dialog(msg):
-        tkMessageBox.showerror("错误信息", "错误信息："+ msg)
+        tkMessageBox.showerror("错误信息", "错误信息：" + msg)
+
+
+class StateBar(Frame):
+
+    def __init__(self, master=None):
+        Frame.__init__(self, master)
+        state_machine = StateMachine()
+        self.__current_state = state_machine.get_state()
+        self.__statue_label_info = Label(self, text="当前状态：")
+        self.__statue_label = Label(self, text=self.__current_state)
+        self.__statue_label_info.pack(side=LEFT)
+        self.__statue_label.pack(side=RIGHT)
+        self.pack(side=BOTTOM)
+        self.__refresh_state()
+
+    def __refresh_state(self):
+        state = StateMachine().get_state()
+        if state != self.__current_state:
+            print "refresh state"
+            self.__current_state = state
+            self.__statue_label.config(text=state)
+        timer = threading.Timer(0.1, self.__refresh_state)
+        timer.start()
+
 
 # 创建主界面
 def make_window():
@@ -146,12 +175,7 @@ def make_window():
     panel = Frame(root)
     app = Application(panel)
     panel.pack()
-    statue_bar = Frame(root)
-    statue_label_info = Label(statue_bar, text="当前状态：")
-    statue_label = Label(statue_bar, text="----")
-    statue_label_info.pack(side=LEFT)
-    statue_label.pack(side=RIGHT)
-    statue_bar.pack(side=BOTTOM)
+    state_bar = StateBar(root)
     root.title("APK渠道打包工具")
     root.minsize(800, 600)  # 设置窗口大小 最小尺寸
     # root.maxsize(800, 800)  # 设置窗口大小 最大尺寸

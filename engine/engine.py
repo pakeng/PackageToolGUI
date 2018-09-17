@@ -9,13 +9,13 @@ import xml.dom.minidom
 import os
 import EngineConfig
 from beans import ConfigBean
+from state_machine import StateMachine, MachineState
 
 
 def async(f):
     def wrapper(*args, **kwargs):
         thr = Thread(target=f, args=args, kwargs=kwargs)
         thr.start()
-
     return wrapper
 
 
@@ -26,32 +26,41 @@ class PackageTool(object):
         self._init_config()
         self._file_path = channel_config.src_file_name
         self._package_name = channel_config.package_name
+        #  测试
+        self._package_name = "com.vito.game"
         self._channel_name = channel_config.name
         self._sub_channel_name = channel_config.name
         self._u_meng_tag = channel_config.u_tag
         self._debug_level = channel_config.debug_level
         self._lebian_clientChId = channel_config.name
-        self.output_dir = channel_config.out_file_dir
+        self.output_dir = os.path.join(channel_config.out_file_dir, (self._channel_name+".apk"))
+        print self.output_dir
 
     def start(self):
+        print("start")
         self._copy_files()
         self._fix_file()
+        self._write_file()
         self._compile()
+        print("end")
 
+    # 反编译
     @async
     def decompile(self):
         cmd_str = EngineConfig.cmd_decompile_str % (os.path.join(self._base_dir, EngineConfig.temp_ori_decompile_dir),
                                                     self._file_path)
-        print os.popen(cmd_str).read().decode('gb2312')
+        StateMachine().set_state(MachineState.DECOMPILE)
         process = subprocess.Popen(cmd_str, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=False)
         while process.poll() is None:
-            line = process.stdout.readline()
+            line = process.stdout.readline().decode('gb2312')
             line = line.strip()
             if line:
                 print 'Decompile output: [{}]'.format(line)
         if process.returncode == 0:
+            StateMachine().set_state(MachineState.WAITE)
             print 'Decompile success'
         else:
+            StateMachine().set_state(MachineState.WAITE)
             print'Decompile failed'
 
     def test(self):
@@ -60,13 +69,14 @@ class PackageTool(object):
         print time.time()
         self.decompile()
         print time.time()
+        # self.start()
+        print time.time()
 
     def _init_config(self):
         self._base_dir = os.path.join(os.getcwd(), "..")
         self._base_dir = os.path.join(self._base_dir, EngineConfig.temp_base_dir)
         self._work_dir = os.path.join(self._base_dir, EngineConfig.temp_work_dir)
         self._android_manifest_file_path = os.path.join(self._work_dir, "AndroidManifest.xml")
-
 
     def _fix_file(self):
         # 打开 XML 文档
@@ -109,22 +119,27 @@ class PackageTool(object):
     @async
     def _compile(self):
         cmd_str = EngineConfig.cmd_compile_str % (self.output_dir, self._work_dir)
-        print os.popen(cmd_str).read().decode('gb2312')
+        # print os.popen(cmd_str).read().decode('gb2312')
+        StateMachine().set_state(MachineState.COMPILE)
         process = subprocess.Popen(cmd_str, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=False)
         while process.poll() is None:
-            line = process.stdout.readline()
+            line = process.stdout.readline().decode('gb2312')
             line = line.strip()
             if line:
-                print 'Decompile output: [{}]'.format(line)
+                print 'Compile output: [{}]'.format(line)
         if process.returncode == 0:
+            StateMachine().set_state(MachineState.WAITE)
             print 'Decompile success'
         else:
+            StateMachine().set_state(MachineState.WAITE)
             print'Decompile failed'
+
 
 def test():
     bean = ConfigBean.Configuration()
     tool = PackageTool(bean)
     tool.test()
+    # tool.start()
 
 
 if __name__ == '__main__':

@@ -1,2 +1,4 @@
 .temp_dir/
 venv/
+*.apk
+*.pyc
